@@ -1,12 +1,12 @@
 {
   "general": {
     "language": "en",
-    "currency": "USD",
+    "currency": "AUD",
     "identifierType": "license"
   },
   "frameworkIntegration": {
-    "enabled": false,
-    "resource": "your-resource",
+    "enabled": true,
+    "resource": "ox_inventory",
     "syncInitialBankBalance": true
   },
   "database": {
@@ -188,7 +188,7 @@
     "mockLicenses": false
   },
   "atmBlips": {
-    "enabled": false,
+    "enabled": true,
     "name": "ATM",
     "colour": 39,
     "icon": 108,
