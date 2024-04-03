@@ -30,11 +30,12 @@ export class CashService {
   }
 
   async getMyCash(source: number): Promise<number> {
-    const user = this._userService.getUser(source);
-    if (useFrameworkIntegration) {
-      const exports = getFrameworkExports();
-      return exports.getCash(user.getSource()) ?? 0;
-    }
+  if (useFrameworkIntegration) {
+    const exports = getFrameworkExports();
+    return exports.getCash(source) ?? 0;
+  }
+
+    // const user = this._userService.getUser(source);
 
     const cash = await this.getCashModel(source);
     return cash?.getDataValue('amount') ?? 0;
@@ -69,14 +70,15 @@ export class CashService {
 
   async handleRemoveCash(source: number, amount: number): Promise<CashModel | null> {
     logger.debug(`Taking ${amount} from ${source}`);
-    const user = this._userService.getUser(source);
-    const identifier = user.getIdentifier();
-
     if (useFrameworkIntegration) {
       const exports = getFrameworkExports();
       exports.removeCash(source, amount);
       return null;
     }
+    const user = this._userService.getUser(source);
+    const identifier = user.getIdentifier();
+
+
 
     const cash = await this._cashDB.getCashByIdentifier(identifier);
     if (!cash) {
@@ -89,23 +91,27 @@ export class CashService {
   }
 
   async handleAddCash(source: number, amount: number): Promise<CashModel | null> {
-    logger.debug(`Giving ${amount} to ${source}`);
-    const user = this._userService.getUser(source);
-    const identifier = user.getIdentifier();
+    try {
+      logger.debug(`Giving ${amount} to ${source}`);
+      if (useFrameworkIntegration) {
+        const exports = getFrameworkExports();
+        exports.addCash(source, amount);
+        return null;
+      }
+      const user = this._userService.getUser(source);
+      const identifier = user.getIdentifier();
+      const cash = await this._cashDB.getCashByIdentifier(identifier);
+      if (!cash) {
+        throw new Error(GenericErrors.NotFound);
+      }
+      await this._cashDB.increment(cash, amount);
 
-    if (useFrameworkIntegration) {
-      const exports = getFrameworkExports();
-      exports.addCash(source, amount);
-      return null;
+      emitNet(BalanceEvents.UpdateCashBalance, source, cash?.getDataValue('amount'));
+      return cash;
+    } catch(err: any) {
+      
+      logger.debug(`addCash error: ${err}`);
+      throw new Error(err);
     }
-
-    const cash = await this._cashDB.getCashByIdentifier(identifier);
-    if (!cash) {
-      throw new Error(GenericErrors.NotFound);
-    }
-    await this._cashDB.increment(cash, amount);
-
-    emitNet(BalanceEvents.UpdateCashBalance, source, cash?.getDataValue('amount'));
-    return cash;
   }
 }
